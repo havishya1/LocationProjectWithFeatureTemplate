@@ -16,6 +16,7 @@ namespace LocationProjectWithFeatureTemplate
         private readonly FeatureCache _cache;
         private List<ForwardBackwordAlgo> forwardBackwordAlgos;
         private WeightVector _weightVector;
+        private List<Tuple<string, string>> _twoGramsList;
 
         public ComputeGradient(List<List<string>> inputSentence, List<List<string>> tagsList,
             List<string> tagList, double lambda, FeatureCache cache)
@@ -27,6 +28,13 @@ namespace LocationProjectWithFeatureTemplate
             _cache = cache;
             forwardBackwordAlgos = new List<ForwardBackwordAlgo>();
             _weightVector = null;
+            _twoGramsList = new List<Tuple<string, string>>();
+            var ngramTags = new Tags(_tagList);
+            foreach (var ngram in ngramTags.GetNGramTags(2))
+            {
+                string[] split = ngram.Split(new[] { ':' });
+                _twoGramsList.Add(new Tuple<string, string>(split[0], split[1]));
+            }
         }
 
         public void Dump(string outputFile, Dictionary<int, string> dictKtoFeature)
@@ -172,22 +180,30 @@ namespace LocationProjectWithFeatureTemplate
             int lineIndex, int pos, int k)
         {
             double sum = 0;
-            foreach (var ngramTag in ngramTags.GetNGramTags(2))
+            //foreach (var ngramTag in ngramTags.GetNGramTags(2))
+            foreach (var tuple in _twoGramsList)
             {
-                string[] split = ngramTag.Split(new[] { ':' });
-
-                if (_cache.Contains(split[0], split[1], k, pos, lineIndex))
+                if (_cache.Contains(tuple.Item1, tuple.Item2, k, pos, lineIndex))
                 {
-                    sum += (forwardBackwordAlgos[lineIndex].GetQ(pos, split[0], split[1]) *
-                    _weightVector.Get(k));    
+                    var value = forwardBackwordAlgos[lineIndex].GetQ(pos, tuple.Item1, tuple.Item2);
+                    sum += ( value * _weightVector.Get(k));
                 }
-                //else
-                //{
-                //    sum += (forwardBackwordAlgos[lineIndex].GetQ(j, split[0], split[1]) *
-                //    weightedFeatureSum.GetFeatureK(split[0], split[1], j, k, sentence));
-                //}
-
             }
+            //{
+            //    string[] split = ngramTag.Split(new[] { ':' });
+
+            //    if (_cache.Contains(split[0], split[1], k, pos, lineIndex))
+            //    {
+            //        sum += (forwardBackwordAlgos[lineIndex].GetQ(pos, split[0], split[1]) *
+            //        _weightVector.Get(k));    
+            //    }
+            //    //else
+            //    //{
+            //    //    sum += (forwardBackwordAlgos[lineIndex].GetQ(j, split[0], split[1]) *
+            //    //    weightedFeatureSum.GetFeatureK(split[0], split[1], j, k, sentence));
+            //    //}
+
+            //}
             return sum;
         }
 
