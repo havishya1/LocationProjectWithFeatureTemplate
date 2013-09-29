@@ -50,7 +50,7 @@ namespace LocationProjectWithFeatureTemplate
 
             for (int i = 0; i < weightVector.FeatureCount; i++)
             {
-                if (weightVector.WeightArray[i] > limit)
+                if (Math.Abs(weightVector.WeightArray[i]) >= limit)
                 {
                     newWeights[featureCount] = weightVector.WeightArray[i];
                     var feature = DictKToFeatures[i];

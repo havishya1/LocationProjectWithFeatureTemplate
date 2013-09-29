@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace LocationProjectWithFeatureTemplate
 {
@@ -118,16 +119,19 @@ namespace LocationProjectWithFeatureTemplate
 
         public void SetKey(int key, double value)
         {
-            if (key >= FeatureCount)
+            lock (this)
             {
-                FeatureCount = key + 1;
-            }
-            if (key > WeightArray.Length)
-            {
-                Array.Resize(ref WeightArray, WeightArray.Length + 1000);
-            }
+                if (key >= FeatureCount)
+                {
+                    FeatureCount = key + 1;
+                }
+                if (key > WeightArray.Length)
+                {
+                    Array.Resize(ref WeightArray, WeightArray.Length + 1000);
+                }
 
-            WeightArray[key] = value;
+                WeightArray[key] = value;
+            }
             //if (!WDictionary.ContainsKey(key))
             //{
             //    WDictionary.Add(key, 0);

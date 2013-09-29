@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LocationProjectWithFeatureTemplate
 {
-    class ComputeGradient
+    public class ComputeGradient
     {
         private readonly List<List<string>> _inputSentence;
         private readonly List<List<string>> _outputTagsList;
@@ -77,32 +79,56 @@ namespace LocationProjectWithFeatureTemplate
             }
         }
 
-        public WeightVector RunIterations(WeightVector weightVector, int iterationCount)
+        public WeightVector RunIterations(WeightVector weightVector, int iterationCount, int threadCount)
         {
             _weightVector = weightVector;
+
             for (int iter = 0; iter < iterationCount; iter++)
             {
                 Console.WriteLine(DateTime.Now + " running iteration " + iter);
-                var newWeightVector = new WeightVector(weightVector.FeatureKDictionary);
+                var newWeightVector = new WeightVector(weightVector.FeatureKDictionary, _weightVector.FeatureCount);
                 SetForwardBackwordAlgo(weightVector);
-                //for (var k = 0; k < weightVector.FeatureKDictionary.Count; k++)
-                for (var k = weightVector.FeatureKDictionary.Count-1; k >= 0; k--)
+                var doneEvents = new ManualResetEvent[threadCount];
+                var partition = weightVector.FeatureCount/threadCount;
+
+                for (int threadIndex = 0; threadIndex < threadCount; threadIndex++)
                 {
-                    if (k%100 == 0)
-                    {
-                        Console.WriteLine(DateTime.Now + " running iteration for k " + k);
-                    }
-                    var wk = Compute(k, weightVector);
-                    wk = weightVector.Get(k) + _lambda*wk;
-                    newWeightVector.SetKey(k, wk);
+                    var start = threadIndex*partition;
+                    var end = start + partition;
+                    end = end > weightVector.FeatureCount ? weightVector.FeatureCount : end;
+                    doneEvents[threadIndex] = new ManualResetEvent(false);
+
+                    var info = new ThreadInfoObject(this, start, end, newWeightVector,
+                        doneEvents[threadIndex]);
+                    ThreadPool.QueueUserWorkItem(info.StartGradientComputing, threadIndex);
                 }
+
+                WaitHandle.WaitAll(doneEvents);
+                //for (var k = _weightVector.FeatureKDictionary.Count-1; k >= 0; k--)
+                //{
+                //    var wk = Compute(k);
+                //    newWeightVector.SetKey(k, wk);
+                //}
                 _weightVector = weightVector = newWeightVector;
             }
-            _weightVector = weightVector;
-            return weightVector;
+            return _weightVector;
         }
 
-        private double Compute(int k, WeightVector weightVector)
+        public void ComputeRange(int start, int end, WeightVector newWeightVector, int threadIndex = 0)
+        {
+            for (var k = start; k < end; k++)
+            {
+                if (k % 100 == 0)
+                {
+                    Console.WriteLine(DateTime.Now + "threadIndex: "+ threadIndex+
+                        " running iteration for k " + k);
+                }
+                var wk = Compute(k);
+                newWeightVector.SetKey(k, wk);
+            }
+        }
+
+        private double Compute(int k)
         {
             double output = 0;
             //double secondTerm = 0;
@@ -116,14 +142,10 @@ namespace LocationProjectWithFeatureTemplate
             var ngramTags = new Tags(_tagList);
 
             // first term.
-            foreach (var sentence in _inputSentence)
+            //foreach (var sentence in _inputSentence)
+            for (lineIndex = 0; lineIndex< _inputSentence.Count; lineIndex++)
             {
                 var outputTags = _outputTagsList[lineIndex];
-
-                if (sentence.Count != outputTags.Count)
-                {
-                    throw new Exception("compute counts dont match " + sentence.Count + "with " + outputTags.Count);
-                }
 
                 var initOutput = GetAllFeatureKFromCache(outputTags, k, lineIndex);
 
@@ -144,10 +166,10 @@ namespace LocationProjectWithFeatureTemplate
                 //    }
                 //    secondTerm += sum;
                 //}
-                lineIndex++;
             }
 
-            output = output - (_lambda*weightVector.Get(k));
+            output = output - (_lambda * _weightVector.Get(k));
+            output = _weightVector.Get(k) + _lambda * output;
             return output;
         }
 
@@ -225,7 +247,6 @@ namespace LocationProjectWithFeatureTemplate
             return sum;
         }
     }
-
     
 }
 

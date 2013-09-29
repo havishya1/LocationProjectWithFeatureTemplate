@@ -37,6 +37,7 @@ namespace LocationProjectWithFeatureTemplate
 
             const string modelFile = "../../data/training/tag.model.trial1";
             const string input = "../../data/training/NYT_19980403_parsed.key";
+            const int threadCount = 8;
             var perceptron = new Perceptron(input, modelFile, tags);
             perceptron.Train();
             perceptron.ReMapFeatureToK();
@@ -48,7 +49,7 @@ namespace LocationProjectWithFeatureTemplate
             featureCache.CreateCache();
             var gradient = new ComputeGradient(perceptron.InputSentences, perceptron.TagsList,
                 tags, .1, featureCache);
-            gradient.RunIterations(perceptron.WeightVector, 10);
+            gradient.RunIterations(perceptron.WeightVector, 10, threadCount);
             gradient.Dump(modelFile, perceptron.MapFeatures.DictKToFeatures);
         }
 

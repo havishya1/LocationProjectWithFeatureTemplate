@@ -25,7 +25,8 @@ namespace LocationProjectWithFeatureTemplate
         {
             var readModel = new ReadModel(InputModelFile);
             var temp = new ReadModel(string.Concat(InputModelFile, ".featuresToK"));
-            _weightVector = new WeightVector(temp.GetFeatureToKdDictionary(), 0);
+            var dict = temp.GetFeatureToKdDictionary();
+            _weightVector = new WeightVector(dict, dict.Count);
 
             foreach (var pair in readModel.ModelIterator())
             {

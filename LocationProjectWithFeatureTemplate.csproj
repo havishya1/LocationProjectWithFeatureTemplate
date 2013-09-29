@@ -59,6 +59,7 @@
     <Compile Include="ReadModel.cs" />
     <Compile Include="Tags.cs" />
     <Compile Include="TestGLMViterbi.cs" />
+    <Compile Include="ThreadInfoObject.cs" />
     <Compile Include="ViterbiForGlobalLinearModel.cs" />
     <Compile Include="WeightedFeatureSum.cs" />
     <Compile Include="WeightVector.cs" />
