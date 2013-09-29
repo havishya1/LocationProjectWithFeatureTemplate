@@ -70,9 +70,12 @@ namespace LocationProjectWithFeatureTemplate
             var features = new Features("*", prevTag, tag, Sentences[lineIndex], pos);
             foreach (var feature in features.GetFeatures())
             {
-                int k = _featureTokDictionary[feature];
-                Cache[lineIndex][pos].Add(string.Format("{0}@#{1}@#{2}", prevTag, tag,
-                    k.ToString(CultureInfo.InvariantCulture)));
+                if (_featureTokDictionary.ContainsKey(feature))
+                {
+                    int k = _featureTokDictionary[feature];
+                    Cache[lineIndex][pos].Add(string.Format("{0}@#{1}@#{2}", prevTag, tag,
+                        k.ToString(CultureInfo.InvariantCulture)));
+                }
             }
         }
     }

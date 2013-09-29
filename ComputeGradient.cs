@@ -33,14 +33,19 @@ namespace LocationProjectWithFeatureTemplate
         {
             Console.WriteLine(DateTime.Now+" training is complete");
             var output = new WriteModel(outputFile);
-            var sortedDictionary = from pair in _weightVector.WDictionary
-                orderby Math.Abs(pair.Value) descending
-                select pair;
-            foreach (var weight in sortedDictionary)
+            for (int index = 0; index <_weightVector.FeatureCount; index++)
             {
-                output.WriteLine(string.Format("{0} {1} {2}", weight.Key,
-                    dictKtoFeature[weight.Key], weight.Value));
+                output.WriteLine(string.Format("{0} {1} {2}", index,
+                    dictKtoFeature[index], _weightVector.WeightArray[index]));
             }
+            //var sortedDictionary = from pair in _weightVector.WDictionary
+            //    orderby Math.Abs(pair.Value) descending
+            //    select pair;
+            //foreach (var weight in sortedDictionary)
+            //{
+            //    output.WriteLine(string.Format("{0} {1} {2}", weight.Key,
+            //        dictKtoFeature[weight.Key], weight.Value));
+            //}
             output.Flush();
         }
 
@@ -66,6 +71,7 @@ namespace LocationProjectWithFeatureTemplate
 
         public WeightVector RunIterations(WeightVector weightVector, int iterationCount)
         {
+            _weightVector = weightVector;
             for (int iter = 0; iter < iterationCount; iter++)
             {
                 Console.WriteLine(DateTime.Now + " running iteration " + iter);
@@ -82,7 +88,7 @@ namespace LocationProjectWithFeatureTemplate
                     wk = weightVector.Get(k) + _lambda*wk;
                     newWeightVector.SetKey(k, wk);
                 }
-                weightVector = newWeightVector;
+                _weightVector = weightVector = newWeightVector;
             }
             _weightVector = weightVector;
             return weightVector;
@@ -111,8 +117,10 @@ namespace LocationProjectWithFeatureTemplate
                     throw new Exception("compute counts dont match " + sentence.Count + "with " + outputTags.Count);
                 }
 
+                var initOutput = GetAllFeatureKFromCache(outputTags, k, lineIndex);
+
                 output += CalculateGradient(outputTags, k,
-                    ngramTags, lineIndex);
+                    ngramTags, lineIndex, initOutput);
 
                 //output += weightedFeaturesum.GetAllFeatureK(outputTags, k, sentence);
 
@@ -136,12 +144,12 @@ namespace LocationProjectWithFeatureTemplate
         }
 
         private double CalculateGradient(List<string> outputTags,
-            int k, Tags ngramTags, int lineIndex)
+            int k, Tags ngramTags, int lineIndex, double initOutput)
         {
-            double output = 0;
+            double output = initOutput;
             double secondTerm = 0;
             //output += weightedFeatureSum.GetAllFeatureK(outputTags, k, sentence);
-            output += GetAllFeatureKFromCache(outputTags, k, lineIndex);
+            
             
 
             // second term.

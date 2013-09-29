@@ -31,23 +31,36 @@ namespace LocationProjectWithFeatureTemplate
         {
             var newDictKtoF = new Dictionary<int, string>();
             var newDictFtoK = new Dictionary<string, int>();
-            var weightDict = new Dictionary<int, double>();
-            int k = 0;
+            //var weightDict = new Dictionary<int, double>();
+            //int k = 0;
 
-            var sortedDictionary = from pair in weightVector.WDictionary
-                                   where Math.Abs(pair.Value) > 2
-                                    orderby Math.Abs(pair.Value) descending 
-                                    select pair;
+            //var elements = from element in weightVector.WeightArray
+            //               orderby element descending
+            //               where element > 1
+            //               select element;
 
-            foreach (var weight in sortedDictionary)
+            //var sortedDictionary = from pair in weightVector.WDictionary
+            //                       where Math.Abs(pair.Value) > 1
+            //                        orderby Math.Abs(pair.Value) descending 
+            //                        select pair;
+            const double limit = 1;
+            var newWeights = new double[weightVector.FeatureCount];
+            int featureCount = 0;
+            Array.Clear(newWeights, 0, newWeights.Length);
+
+            for (int i = 0; i < weightVector.FeatureCount; i++)
             {
-                var feature = DictKToFeatures[weight.Key];
-                newDictFtoK[feature] = k;
-                newDictKtoF[k] = feature;
-                weightDict[k] = weight.Value;
-                k++;
+                if (weightVector.WeightArray[i] > limit)
+                {
+                    newWeights[featureCount] = weightVector.WeightArray[i];
+                    var feature = DictKToFeatures[i];
+                    newDictFtoK[feature] = featureCount;
+                    newDictKtoF[featureCount] = feature;
+                    featureCount++;
+                }
             }
-            weightVector.WDictionary = weightDict;
+            weightVector.WeightArray = newWeights;
+            weightVector.FeatureCount = featureCount;
             DictFeaturesToK = weightVector.FeatureKDictionary = newDictFtoK;
             DictKToFeatures = newDictKtoF;
         }

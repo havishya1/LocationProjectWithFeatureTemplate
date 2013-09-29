@@ -15,16 +15,17 @@ namespace LocationProjectWithFeatureTemplate
             WDictionary = new Dictionary<int, double>();
             FeatureKDictionary = new Dictionary<string, int>();
             WeightArray = new double[40000];
+            Array.Clear(WeightArray, 0, WeightArray.Length);
             FeatureCount = 0;
             throw new Exception("did you forget ???");
         }
 
-        public WeightVector(Dictionary<string, int> inputFeatureTemp, int count)
+        public WeightVector(Dictionary<string, int> inputFeatureTemp, int count = 0)
         {
             WDictionary = new Dictionary<int, double>();
             FeatureKDictionary = inputFeatureTemp;
             WeightArray = new double[count+1000];
-            WeightArray.Initialize();
+            Array.Clear(WeightArray, 0, WeightArray.Length);
             FeatureCount = count;
         }
 
@@ -35,7 +36,16 @@ namespace LocationProjectWithFeatureTemplate
             if (FeatureKDictionary.ContainsKey(input.Key))
             {
                 var k = FeatureKDictionary[input.Key];
-                WDictionary.Add(k, double.Parse(input.Value));
+                //WDictionary.Add(k, double.Parse(input.Value));
+                if (k >= FeatureCount)
+                {
+                    FeatureCount = k+1;
+                }
+                if (k > WeightArray.Length)
+                {
+                    Array.Resize(ref WeightArray, WeightArray.Length+1000);
+                }
+                WeightArray[k] = double.Parse(input.Value);
 
             }
         }
@@ -56,27 +66,26 @@ namespace LocationProjectWithFeatureTemplate
 
         public double Get(string tag)
         {
-            try
-            {
-                return Get(FeatureKDictionary[tag]);
-            }
-            catch (Exception)
-            {
-                return 0;
-            }
+            return Get(FeatureKDictionary[tag]);
             //return FeatureKDictionary.ContainsKey(tag) ? Get(FeatureKDictionary[tag]) : 0;
         }
 
         public double Get(int k)
         {
-            try
-            {
-                return WDictionary[k];
-            }
-            catch (Exception)
+            if (k < FeatureCount)
+                return WeightArray[k];
+            else
             {
                 return 0;
             }
+            //try
+            //{
+            //    return WDictionary[k];
+            //}
+            //catch (Exception)
+            //{
+            //    return 0;
+            //}
             //return (WDictionary.ContainsKey(k) && !Double.IsNaN(WDictionary[k])) ? WDictionary[k] : 0;
             //return (WDictionary.ContainsKey(k)) ? WDictionary[k] : 0;
         }
@@ -91,20 +100,39 @@ namespace LocationProjectWithFeatureTemplate
 
         public void AddToKey(int key, double value)
         {
-            if (!WDictionary.ContainsKey(key))
+            if (key >= FeatureCount)
             {
-                WDictionary.Add(key, 0);
+                FeatureCount = key+1;
             }
-            WDictionary[key] += value;
+            if (key > WeightArray.Length)
+            {
+                Array.Resize(ref WeightArray, WeightArray.Length + 1000);
+            }
+            WeightArray[key] += value;
+            //if (!WDictionary.ContainsKey(key))
+            //{
+            //    WDictionary.Add(key, 0);
+            //}
+            //WDictionary[key] += value;
         }
 
         public void SetKey(int key, double value)
         {
-            if (!WDictionary.ContainsKey(key))
+            if (key >= FeatureCount)
             {
-                WDictionary.Add(key, 0);
+                FeatureCount = key + 1;
             }
-            WDictionary[key] = value;            
+            if (key > WeightArray.Length)
+            {
+                Array.Resize(ref WeightArray, WeightArray.Length + 1000);
+            }
+
+            WeightArray[key] = value;
+            //if (!WDictionary.ContainsKey(key))
+            //{
+            //    WDictionary.Add(key, 0);
+            //}
+            //WDictionary[key] = value;            
         }
 
         //private float Abs(float value)

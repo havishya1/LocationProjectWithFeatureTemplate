@@ -96,15 +96,11 @@ namespace LocationProjectWithFeatureTemplate
         public void Dump()
         {
             var output = new WriteModel(string.Concat(_outputFile, ".temp"));
-            var sortedDictionary = from pair in WeightVector.WDictionary
-                                   orderby Math.Abs(pair.Value) descending
-                                   select pair;
-            foreach (var weight in sortedDictionary)
+            
+            for (int index = 0; index < WeightVector.FeatureCount; index++)
             {
-                output.WriteLine(string.Format("{0} {1}", 
-                    MapFeatures.DictKToFeatures[weight.Key], weight.Value));
-                //output.WriteLine(string.Format("{0} {1} {2}", weight.Key,
-                //    MapFeatures.DictKToFeatures[weight.Key], weight.Value));
+                output.WriteLine(string.Format("{0} {1} {2}", index,
+                    MapFeatures.DictKToFeatures[index], WeightVector.WeightArray[index]));
             }
             output.Flush();
         }
