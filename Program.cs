@@ -37,7 +37,7 @@ namespace LocationProjectWithFeatureTemplate
 
             const string modelFile = "../../data/training/tag.model.trial1";
             const string input = "../../data/training/NYT_19980403_parsed.key";
-            const int threadCount = 8;
+            const int threadCount = 1;
             var perceptron = new Perceptron(input, modelFile, tags);
             perceptron.Train();
             perceptron.ReMapFeatureToK();

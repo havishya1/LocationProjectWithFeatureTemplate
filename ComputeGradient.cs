@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -18,7 +19,8 @@ namespace LocationProjectWithFeatureTemplate
         private readonly FeatureCache _cache;
         private List<ForwardBackwordAlgo> forwardBackwordAlgos;
         private WeightVector _weightVector;
-        private List<Tuple<string, string>> _twoGramsList;
+        private string[] _twoGramsList;
+        private KeyValuePair<string,string>[] _twoGramPair;
 
         public ComputeGradient(List<List<string>> inputSentence, List<List<string>> tagsList,
             List<string> tagList, double lambda, FeatureCache cache)
@@ -30,12 +32,21 @@ namespace LocationProjectWithFeatureTemplate
             _cache = cache;
             forwardBackwordAlgos = new List<ForwardBackwordAlgo>();
             _weightVector = null;
-            _twoGramsList = new List<Tuple<string, string>>();
+            _twoGramsList = new string[4];
+            _twoGramPair = new KeyValuePair<string, string>[4];
             var ngramTags = new Tags(_tagList);
+            int index = 0;
             foreach (var ngram in ngramTags.GetNGramTags(2))
             {
+                if (index >= _twoGramsList.Length)
+                {
+                    Array.Resize(ref _twoGramsList, index+1);
+                    Array.Resize(ref _twoGramPair, index + 1);
+                }
                 string[] split = ngram.Split(new[] { ':' });
-                _twoGramsList.Add(new Tuple<string, string>(split[0], split[1]));
+                _twoGramsList[index] = split[0] +"@#"+ split[1];
+                _twoGramPair[index] = new KeyValuePair<string, string>(split[0], split[1]);
+                index++;
             }
         }
 
@@ -79,7 +90,7 @@ namespace LocationProjectWithFeatureTemplate
             }
         }
 
-        public WeightVector RunIterations(WeightVector weightVector, int iterationCount, int threadCount)
+        public WeightVector RunIterations(WeightVector weightVector, int iterationCount, int threadCount = 1)
         {
             _weightVector = weightVector;
 
@@ -88,22 +99,29 @@ namespace LocationProjectWithFeatureTemplate
                 Console.WriteLine(DateTime.Now + " running iteration " + iter);
                 var newWeightVector = new WeightVector(weightVector.FeatureKDictionary, _weightVector.FeatureCount);
                 SetForwardBackwordAlgo(weightVector);
-                var doneEvents = new ManualResetEvent[threadCount];
-                var partition = weightVector.FeatureCount/threadCount;
-
-                for (int threadIndex = 0; threadIndex < threadCount; threadIndex++)
+                if (threadCount > 1)
                 {
-                    var start = threadIndex*partition;
-                    var end = start + partition;
-                    end = end > weightVector.FeatureCount ? weightVector.FeatureCount : end;
-                    doneEvents[threadIndex] = new ManualResetEvent(false);
+                    var doneEvents = new ManualResetEvent[threadCount];
+                    var partition = weightVector.FeatureCount/threadCount;
 
-                    var info = new ThreadInfoObject(this, start, end, newWeightVector,
-                        doneEvents[threadIndex]);
-                    ThreadPool.QueueUserWorkItem(info.StartGradientComputing, threadIndex);
+                    for (int threadIndex = 0; threadIndex < threadCount; threadIndex++)
+                    {
+                        var start = threadIndex*partition;
+                        var end = start + partition;
+                        end = end > weightVector.FeatureCount ? weightVector.FeatureCount : end;
+                        doneEvents[threadIndex] = new ManualResetEvent(false);
+
+                        var info = new ThreadInfoObject(this, start, end, newWeightVector,
+                            doneEvents[threadIndex]);
+                        ThreadPool.QueueUserWorkItem(info.StartGradientComputing, threadIndex);
+                    }
+
+                    WaitHandle.WaitAll(doneEvents);
                 }
-
-                WaitHandle.WaitAll(doneEvents);
+                else
+                {
+                    ComputeRange(0, _weightVector.FeatureCount, _weightVector);
+                }
                 //for (var k = _weightVector.FeatureKDictionary.Count-1; k >= 0; k--)
                 //{
                 //    var wk = Compute(k);
@@ -133,13 +151,13 @@ namespace LocationProjectWithFeatureTemplate
             double output = 0;
             //double secondTerm = 0;
             int lineIndex = 0;
+            string kstring = "@#" + k.ToString(CultureInfo.InvariantCulture);
             //var weightedFeaturesum = new WeightedFeatureSum(weightVector, null, true);
 
             if (_inputSentence.Count != _outputTagsList.Count)
             {
                 throw new Exception("counts dont match "+ _inputSentence.Count + "with "+ _outputTagsList.Count);
             }
-            var ngramTags = new Tags(_tagList);
 
             // first term.
             //foreach (var sentence in _inputSentence)
@@ -150,7 +168,7 @@ namespace LocationProjectWithFeatureTemplate
                 var initOutput = GetAllFeatureKFromCache(outputTags, k, lineIndex);
 
                 output += CalculateGradient(outputTags, k,
-                    ngramTags, lineIndex, initOutput);
+                    lineIndex, initOutput, kstring);
 
                 //output += weightedFeaturesum.GetAllFeatureK(outputTags, k, sentence);
 
@@ -174,7 +192,7 @@ namespace LocationProjectWithFeatureTemplate
         }
 
         private double CalculateGradient(List<string> outputTags,
-            int k, Tags ngramTags, int lineIndex, double initOutput)
+            int k, int lineIndex, double initOutput, string kString)
         {
             double output = initOutput;
             double secondTerm = 0;
@@ -186,7 +204,7 @@ namespace LocationProjectWithFeatureTemplate
             for (var pos = 0; pos < outputTags.Count; pos++)
             {
                 //double sum = 0;
-                secondTerm += GetSecondTerm(ngramTags, lineIndex, pos, k);
+                secondTerm += GetSecondTerm(lineIndex, pos, k, kString);
                 //foreach (var ngramTag in ngramTags.GetNGramTags(2))
                 //{
                 //    string[] split = ngramTag.Split(new[] { ':' });
@@ -198,19 +216,20 @@ namespace LocationProjectWithFeatureTemplate
             return output - secondTerm;
         }
 
-        private double GetSecondTerm(Tags ngramTags, 
-            int lineIndex, int pos, int k)
+        private double GetSecondTerm(int lineIndex, int pos, int k, string kString)
         {
             double sum = 0;
             //foreach (var ngramTag in ngramTags.GetNGramTags(2))
-            foreach (var tuple in _twoGramsList)
+            for(var i = 0; i< _twoGramsList.Length; i++)
             {
-                if (_cache.Contains(tuple.Item1, tuple.Item2, k, pos, lineIndex))
+                if (_cache.Contains(_twoGramsList[i], kString, pos, lineIndex))
                 {
-                    var value = forwardBackwordAlgos[lineIndex].GetQ(pos, tuple.Item1, tuple.Item2);
-                    sum += ( value * _weightVector.Get(k));
+                    var value = forwardBackwordAlgos[lineIndex].GetQ(pos, _twoGramPair[i].Key,
+                        _twoGramPair[i].Value);
+                    sum += (value * _weightVector.Get(k));
                 }
             }
+            return sum;
             //{
             //    string[] split = ngramTag.Split(new[] { ':' });
 
@@ -226,7 +245,7 @@ namespace LocationProjectWithFeatureTemplate
             //    //}
 
             //}
-            return sum;
+            //return sum;
         }
 
         public double GetAllFeatureKFromCache(List<string> tags, int k, int lineIndex)

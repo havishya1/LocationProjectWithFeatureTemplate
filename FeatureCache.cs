@@ -65,6 +65,12 @@ namespace LocationProjectWithFeatureTemplate
             return Cache[lineIndex][pos].Contains(key);
         }
 
+        public bool Contains(string tag, string kString, int pos, int lineIndex)
+        {
+            var key = tag + kString;
+            return Cache[lineIndex][pos].Contains(key);
+        }
+
         private void StoreFeature(string prevTag, string tag, int pos, int lineIndex)
         {
             var features = new Features("*", prevTag, tag, Sentences[lineIndex], pos);
