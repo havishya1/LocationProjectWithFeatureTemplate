@@ -75,7 +75,7 @@ namespace LocationProjectWithFeatureTemplate
                 string outputFile = inputFile + ".dev.output1";
                 string keyFile = inputFile + ".key";
                 string outputEval = inputFile + ".dev.evalDump";
-                const string modelFile = "../../data/training/tag.model.10itertation";
+                const string modelFile = "../../data/training/tag.model.trial1";
 
 
                 var testGLMViterbi = new TestGLMViterbi(modelFile, input, outputFile, tags);
