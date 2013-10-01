@@ -50,7 +50,7 @@ namespace LocationProjectWithFeatureTemplate
 
         public void Train()
         {
-            for (var i = 0; i < 1; i++)
+            for (var i = 0; i < 10; i++)
             {
                 Console.WriteLine(DateTime.Now+" training iteration: "+ i);
                 var inputData = new ReadInputData(_inputFile);

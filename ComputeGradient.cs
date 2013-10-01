@@ -93,11 +93,12 @@ namespace LocationProjectWithFeatureTemplate
         public WeightVector RunIterations(WeightVector weightVector, int iterationCount, int threadCount = 1)
         {
             _weightVector = weightVector;
+            //var newWeightVector = new WeightVector(weightVector.FeatureKDictionary, _weightVector.FeatureCount);
 
             for (int iter = 0; iter < iterationCount; iter++)
             {
                 Console.WriteLine(DateTime.Now + " running iteration " + iter);
-                var newWeightVector = new WeightVector(weightVector.FeatureKDictionary, _weightVector.FeatureCount);
+                //var newWeightVector = new WeightVector(weightVector.FeatureKDictionary, _weightVector.FeatureCount);
                 SetForwardBackwordAlgo(weightVector);
                 if (threadCount > 1)
                 {
@@ -111,7 +112,7 @@ namespace LocationProjectWithFeatureTemplate
                         end = end > weightVector.FeatureCount ? weightVector.FeatureCount : end;
                         doneEvents[threadIndex] = new ManualResetEvent(false);
 
-                        var info = new ThreadInfoObject(this, start, end, newWeightVector,
+                        var info = new ThreadInfoObject(this, start, end, weightVector,
                             doneEvents[threadIndex]);
                         ThreadPool.QueueUserWorkItem(info.StartGradientComputing, threadIndex);
                     }
@@ -127,7 +128,7 @@ namespace LocationProjectWithFeatureTemplate
                 //    var wk = Compute(k);
                 //    newWeightVector.SetKey(k, wk);
                 //}
-                _weightVector = weightVector = newWeightVector;
+                _weightVector = weightVector;
             }
             return _weightVector;
         }

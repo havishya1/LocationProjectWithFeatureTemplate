@@ -67,7 +67,15 @@ namespace LocationProjectWithFeatureTemplate
 
         public double Get(string tag)
         {
-            return Get(FeatureKDictionary[tag]);
+            try
+            {
+                return Get(FeatureKDictionary[tag]);
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+            
             //return FeatureKDictionary.ContainsKey(tag) ? Get(FeatureKDictionary[tag]) : 0;
         }
 

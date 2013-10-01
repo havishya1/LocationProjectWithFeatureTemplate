@@ -41,7 +41,7 @@ namespace LocationProjectWithFeatureTemplate
             {
                 if (UabDictionary[j].ContainsKey(a+"#"+b))
                 {
-                    return UabDictionary[j][a + "#" + b];
+                    return UabDictionary[j][a + "#" + b]/Z;
                 }
             }
             return 0;
@@ -52,6 +52,7 @@ namespace LocationProjectWithFeatureTemplate
             InitAlpha();
             InitBeta();
             InitUab();
+            Z = (Z != 0) ? Z : 0;
         }
 
         private void InitUab()
