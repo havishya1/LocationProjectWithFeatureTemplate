@@ -32,12 +32,19 @@ namespace LocationProjectWithFeatureTemplate
 
         public int FeatureCount { get; set; }
 
+        public WeightVector DeepCopy()
+        {
+            var copy = (WeightVector)MemberwiseClone();
+            copy.WeightArray = new double[WeightArray.Length];
+            Array.Copy(WeightArray, copy.WeightArray, WeightArray.Length);
+            return copy;
+        }
+
         public void Add(KeyValuePair<string, string> input)
         {
             if (FeatureKDictionary.ContainsKey(input.Key))
             {
                 var k = FeatureKDictionary[input.Key];
-                //WDictionary.Add(k, double.Parse(input.Value));
                 if (k >= FeatureCount)
                 {
                     FeatureCount = k+1;
@@ -61,8 +68,6 @@ namespace LocationProjectWithFeatureTemplate
             {
                 return -1;
             }
-            
-            //return FeatureKDictionary.ContainsKey(feature) ? FeatureKDictionary[feature] : -1;
         }
 
         public double Get(string tag)
@@ -76,7 +81,6 @@ namespace LocationProjectWithFeatureTemplate
                 return 0;
             }
             
-            //return FeatureKDictionary.ContainsKey(tag) ? Get(FeatureKDictionary[tag]) : 0;
         }
 
         public double Get(int k)
@@ -87,16 +91,7 @@ namespace LocationProjectWithFeatureTemplate
             {
                 return 0;
             }
-            //try
-            //{
-            //    return WDictionary[k];
-            //}
-            //catch (Exception)
-            //{
-            //    return 0;
-            //}
-            //return (WDictionary.ContainsKey(k) && !Double.IsNaN(WDictionary[k])) ? WDictionary[k] : 0;
-            //return (WDictionary.ContainsKey(k)) ? WDictionary[k] : 0;
+            
         }
 
         public void AddToKey(string key, double value)
@@ -118,11 +113,10 @@ namespace LocationProjectWithFeatureTemplate
                 Array.Resize(ref WeightArray, WeightArray.Length + 1000);
             }
             WeightArray[key] += value;
-            //if (!WDictionary.ContainsKey(key))
-            //{
-            //    WDictionary.Add(key, 0);
-            //}
-            //WDictionary[key] += value;
+            if (double.IsInfinity(WeightArray[key]))
+            {
+                WeightArray[key] = double.MaxValue;
+            }
         }
 
         public void SetKey(int key, double value)
@@ -138,50 +132,29 @@ namespace LocationProjectWithFeatureTemplate
                     Array.Resize(ref WeightArray, WeightArray.Length + 1000);
                 }
 
+                if (double.IsNaN(value) || double.IsInfinity(value) || double.IsNegativeInfinity(value))
+                {
+                    Console.WriteLine("weightvector setting NAN k:" + key + " weight: " + Get(key));
+                    value = double.MaxValue;
+                }
                 WeightArray[key] = value;
-            }
-            //if (!WDictionary.ContainsKey(key))
-            //{
-            //    WDictionary.Add(key, 0);
-            //}
-            //WDictionary[key] = value;            
+            }         
         }
 
-        //private float Abs(float value)
-        //{
-        //    if (value < 0)
-        //    {
-        //        value = -1 * value;
-        //    }
-        //    return value;
-        //}
-        //public void NormalizeAllWeights(int normalize = 10)
-        //{
-        //    var tagDictionary = new Dictionary<string, float>();
-        //    foreach (var keyValuePair in WDictionary)
-        //    {
-        //        var tag = keyValuePair.Key.Substring(0, 
-        //            keyValuePair.Key.IndexOf("TAG:", System.StringComparison.Ordinal));
-        //        if (tagDictionary.ContainsKey(tag))
-        //        {
-        //            tagDictionary[tag] += Abs(keyValuePair.Value);
-        //        }
-        //        else
-        //        {
-        //            tagDictionary.Add(tag, Abs(keyValuePair.Value));
-        //        }
-        //    }
+        public void DividebyNum(int number)
+        {
+            for (int i = 0; i < WeightArray.Length; i++)
+            {
+                WeightArray[i] /= number;
+            }
+        }
 
-
-        //    List<string> keyList = WDictionary.Keys.ToList();
-        //    foreach (var key in keyList)
-        //    {
-        //        var tag = key.Substring(0,
-        //            key.IndexOf("TAG:", StringComparison.Ordinal));
-
-        //        WDictionary[key] = (WDictionary[key] * normalize) /
-        //            tagDictionary[tag];
-        //    }
-        //}
+        public void AddWeightVector(WeightVector weightVector)
+        {
+            for (int i = 0; i < weightVector.WeightArray.Length; i++)
+            {
+                WeightArray[i] += weightVector.WeightArray[i];
+            }
+        }
     }
 }

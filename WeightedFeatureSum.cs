@@ -40,7 +40,12 @@ namespace LocationProjectWithFeatureTemplate
             debugStr += "@@";
             if (_crf)
             {
-                return Math.Exp(sum);
+                var val = Math.Exp(sum);
+                if (double.IsInfinity(val))
+                {
+                    return sum;
+                }
+                return val;
             }
             return sum;
         }
@@ -77,7 +82,12 @@ namespace LocationProjectWithFeatureTemplate
             {
                 if (WeightVector.GetFeatureToK(feature) == k)
                 {
-                    return Math.Exp(WeightVector.Get(k));
+                    double val = Math.Exp(WeightVector.Get(k));
+                    if (double.IsInfinity(val))
+                    {
+                        return WeightVector.Get(k);
+                    }
+                    return val;
                 }
             }
             return 0;

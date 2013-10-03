@@ -8,26 +8,31 @@ namespace LocationProjectWithFeatureTemplate
     {
         private readonly string _inputFile;
         private readonly string _outputFile;
-        public readonly WeightVector WeightVector;
+        private readonly bool _useAvg;
+        public WeightVector WeightVector;
         private readonly ViterbiForGlobalLinearModel _viterbiForGlobalLinearModel;
         public MapFeaturesToK MapFeatures;
 
         public List<List<string>> InputSentences;
         public List<List<string>> TagsList;
 
-        public Perceptron(string inputFile, string outputFile, List<string> tagList)
+        public Perceptron(string inputFile, string outputFile, List<string> tagList, bool useAvg = false)
         {
             _inputFile = inputFile;
             _outputFile = outputFile;
+            _useAvg = useAvg;
             var tags = new Tags(tagList);
             MapFeatures = new MapFeaturesToK(inputFile, string.Concat(outputFile, ".featuresToK"), tagList);
             MapFeatures.StartMapping();
             WeightVector = new WeightVector(MapFeatures.DictFeaturesToK, MapFeatures.FeatureCount);
+            AvgWeightVector = new WeightVector(MapFeatures.DictFeaturesToK, MapFeatures.FeatureCount);
             _viterbiForGlobalLinearModel = new ViterbiForGlobalLinearModel(WeightVector, tags);
             InputSentences = new List<List<string>>();
             TagsList = new List<List<string>>();
             ReadInputs();
         }
+
+        public WeightVector AvgWeightVector { get; set; }
 
         public void ReadInputs()
         {
@@ -50,7 +55,8 @@ namespace LocationProjectWithFeatureTemplate
 
         public void Train()
         {
-            for (var i = 0; i < 10; i++)
+            const int iterationCount = 10;
+            for (var i = 0; i < iterationCount; i++)
             {
                 Console.WriteLine(DateTime.Now+" training iteration: "+ i);
                 var inputData = new ReadInputData(_inputFile);
@@ -72,17 +78,18 @@ namespace LocationProjectWithFeatureTemplate
                     {
                         if (inputFeature.Current.Key.Equals(outputFeature.Current.Key))
                             continue;
-                        WeightVector.AddToKey(inputFeature.Current.Value,
-                            1 * Features.GetWeight(inputFeature.Current.Value));
-                        WeightVector.AddToKey(outputFeature.Current.Value,
-                            -1 * Features.GetWeight(inputFeature.Current.Value));
+                        var inputAdd = 1*Features.GetWeight(inputFeature.Current.Value);
+                        var outputRemove = -1*Features.GetWeight(outputFeature.Current.Value);
+                        WeightVector.AddToKey(inputFeature.Current.Value,inputAdd);
+                        WeightVector.AddToKey(outputFeature.Current.Value, outputRemove);
                     }
                 }
-                
+
+                AvgWeightVector.AddWeightVector(WeightVector);
                 inputData.Reset();    
             }
 
-            //  _weightVector.NormalizeAllWeights(100);
+            AvgWeightVector.DividebyNum(iterationCount);
 
             Console.WriteLine(DateTime.Now+" training is complete");
             
@@ -90,17 +97,22 @@ namespace LocationProjectWithFeatureTemplate
 
         public void ReMapFeatureToK()
         {
-            MapFeatures.ReMappingFromWeightVector(WeightVector);
+            MapFeatures.ReMappingFromWeightVector(_useAvg ? AvgWeightVector : WeightVector);
+            if (_useAvg)
+            {
+                WeightVector = AvgWeightVector;
+            }
         }
 
         public void Dump()
         {
-            var output = new WriteModel(string.Concat(_outputFile, ".temp"));
+            var output = new WriteModel(string.Concat(_outputFile, ""));
             
             for (int index = 0; index < WeightVector.FeatureCount; index++)
             {
                 output.WriteLine(string.Format("{0} {1} {2}", index,
-                    MapFeatures.DictKToFeatures[index], WeightVector.WeightArray[index]));
+                    MapFeatures.DictKToFeatures[index],
+                    _useAvg ? AvgWeightVector.WeightArray[index] : WeightVector.WeightArray[index]));
             }
             output.Flush();
         }

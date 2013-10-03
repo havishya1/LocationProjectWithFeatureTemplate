@@ -78,10 +78,10 @@ namespace LocationProjectWithFeatureTemplate
 
         private void InitBeta()
         {
+            _betaDictionary.Add(_inputSentence.Count - 1, new Dictionary<string, double>());
             foreach (var tag in _tagList)
             {
                 // initialize.
-                _betaDictionary.Add(_inputSentence.Count - 1, new Dictionary<string, double>());
                 _betaDictionary[_inputSentence.Count - 1].Add(tag, 1);
             }
 
@@ -103,11 +103,11 @@ namespace LocationProjectWithFeatureTemplate
 
         public void InitAlpha()
         {
+            _alphaDictionary.Add(0, new Dictionary<string, double>());
             foreach (var tag in _tagList)
             {
                 // initialize.
                 var sum = _weightedFeaturesum.GetFeatureValue("*", "*", tag, 0);
-                _alphaDictionary.Add(0, new Dictionary<string, double>());
                 _alphaDictionary[0].Add(tag, sum);
             }
 

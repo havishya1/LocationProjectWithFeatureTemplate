@@ -41,7 +41,7 @@ namespace LocationProjectWithFeatureTemplate
             var perceptron = new Perceptron(input, modelFile, tags);
             perceptron.Train();
             perceptron.ReMapFeatureToK();
-            perceptron.Dump();
+            //perceptron.Dump();
             perceptron.MapFeatures.Dump();
             perceptron.ReadInputs();
             var featureCache = new FeatureCache(perceptron.InputSentences, tags,

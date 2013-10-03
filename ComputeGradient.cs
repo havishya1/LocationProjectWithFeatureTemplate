@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -80,12 +81,9 @@ namespace LocationProjectWithFeatureTemplate
             forwardBackwordAlgos.Clear();
             foreach (var sentence in _inputSentence)
             {
-                var outputTags = _outputTagsList[counter];
-                if (sentence.Count != outputTags.Count)
-                {
-                    throw new Exception("counts dont match " + sentence.Count + "with " + outputTags.Count);
-                }
-                forwardBackwordAlgos.Add(new ForwardBackwordAlgo(sentence, weightVector, outputTags));
+                var algo = new ForwardBackwordAlgo(sentence, weightVector, _tagList);
+                algo.Run();
+                forwardBackwordAlgos.Add(algo);
                 counter++;
             }
         }
@@ -93,26 +91,25 @@ namespace LocationProjectWithFeatureTemplate
         public WeightVector RunIterations(WeightVector weightVector, int iterationCount, int threadCount = 1)
         {
             _weightVector = weightVector;
-            //var newWeightVector = new WeightVector(weightVector.FeatureKDictionary, _weightVector.FeatureCount);
-
-            for (int iter = 0; iter < iterationCount; iter++)
+         
+            for (var iter = 0; iter < iterationCount; iter++)
             {
                 Console.WriteLine(DateTime.Now + " running iteration " + iter);
-                //var newWeightVector = new WeightVector(weightVector.FeatureKDictionary, _weightVector.FeatureCount);
-                SetForwardBackwordAlgo(weightVector);
+                var newWeightVector = _weightVector.DeepCopy();
+                SetForwardBackwordAlgo(newWeightVector);
                 if (threadCount > 1)
                 {
                     var doneEvents = new ManualResetEvent[threadCount];
-                    var partition = weightVector.FeatureCount/threadCount;
+                    var partition = newWeightVector.FeatureCount / threadCount;
 
                     for (int threadIndex = 0; threadIndex < threadCount; threadIndex++)
                     {
                         var start = threadIndex*partition;
                         var end = start + partition;
-                        end = end > weightVector.FeatureCount ? weightVector.FeatureCount : end;
+                        end = end > newWeightVector.FeatureCount ? newWeightVector.FeatureCount : end;
                         doneEvents[threadIndex] = new ManualResetEvent(false);
 
-                        var info = new ThreadInfoObject(this, start, end, weightVector,
+                        var info = new ThreadInfoObject(this, start, end, newWeightVector,
                             doneEvents[threadIndex]);
                         ThreadPool.QueueUserWorkItem(info.StartGradientComputing, threadIndex);
                     }
@@ -121,14 +118,9 @@ namespace LocationProjectWithFeatureTemplate
                 }
                 else
                 {
-                    ComputeRange(0, _weightVector.FeatureCount, _weightVector);
+                    ComputeRange(0, _weightVector.FeatureCount, newWeightVector);
                 }
-                //for (var k = _weightVector.FeatureKDictionary.Count-1; k >= 0; k--)
-                //{
-                //    var wk = Compute(k);
-                //    newWeightVector.SetKey(k, wk);
-                //}
-                _weightVector = weightVector;
+                _weightVector = newWeightVector;
             }
             return _weightVector;
         }
@@ -143,84 +135,71 @@ namespace LocationProjectWithFeatureTemplate
                         " running iteration for k " + k);
                 }
                 var wk = Compute(k);
+                if (double.IsNaN(wk) || double.IsInfinity(wk))
+                {
+                    Console.WriteLine("k: "+ k + "wk is infiity of nana"+ wk);
+                }
                 newWeightVector.SetKey(k, wk);
             }
         }
 
         private double Compute(int k)
         {
-            double output = 0;
-            //double secondTerm = 0;
+            BigInteger outputBigInteger = 0;
+            double outputDouble = 0;
             int lineIndex = 0;
             string kstring = "@#" + k.ToString(CultureInfo.InvariantCulture);
-            //var weightedFeaturesum = new WeightedFeatureSum(weightVector, null, true);
 
             if (_inputSentence.Count != _outputTagsList.Count)
             {
                 throw new Exception("counts dont match "+ _inputSentence.Count + "with "+ _outputTagsList.Count);
             }
 
-            // first term.
-            //foreach (var sentence in _inputSentence)
             for (lineIndex = 0; lineIndex< _inputSentence.Count; lineIndex++)
             {
                 var outputTags = _outputTagsList[lineIndex];
-
-                var initOutput = GetAllFeatureKFromCache(outputTags, k, lineIndex);
-
-                output += CalculateGradient(outputTags, k,
-                    lineIndex, initOutput, kstring);
-
-                //output += weightedFeaturesum.GetAllFeatureK(outputTags, k, sentence);
-
-                //// second term.
-                //for (var j = 0; j < outputTags.Count; j++)
+                
+                //if (_weightVector.WeightArray[k] > 0)
                 //{
-                //    double sum = 0;
-                //    foreach (var ngramTag in ngramTags.GetNGramTags(2))
-                //    {
-                //        string[] split = ngramTag.Split(new[] {':'});
-                //        sum += (forwardBackwordAlgos[i].GetQ(j, split[0], split[1]) *
-                //            weightedFeaturesum.GetFeatureK(split[0], split[1], j, k, sentence));
-                //    }
-                //    secondTerm += sum;
+                //    BigInteger initOutputBig = 0;
+                //    initOutputBig = GetAllFeatureKFromCacheInBig(outputTags, k, lineIndex);
+                //    initOutputBig -= (BigInteger)CalculateGradient(outputTags, k,
+                //    lineIndex, kstring);
+
+                //    outputBigInteger += initOutputBig;
                 //}
+                //else
+                {
+                    double initOutputDouble = 0;
+                    initOutputDouble = GetAllFeatureKFromCache(outputTags, k, lineIndex);
+                    initOutputDouble -= CalculateGradient(outputTags, k,
+                    lineIndex, kstring);
+
+                    outputDouble += initOutputDouble;
+                }
             }
 
-            output = output - (_lambda * _weightVector.Get(k));
-            output = _weightVector.Get(k) + _lambda * output;
-            return output;
+            var finalOutput = outputDouble + (double)outputBigInteger - (_lambda * _weightVector.Get(k));
+            finalOutput = _weightVector.Get(k) + (_lambda * finalOutput);
+            return finalOutput;
         }
 
         private double CalculateGradient(List<string> outputTags,
-            int k, int lineIndex, double initOutput, string kString)
+            int k, int lineIndex, string kString)
         {
-            double output = initOutput;
             double secondTerm = 0;
-            //output += weightedFeatureSum.GetAllFeatureK(outputTags, k, sentence);
             
-            
-
             // second term.
             for (var pos = 0; pos < outputTags.Count; pos++)
             {
-                //double sum = 0;
                 secondTerm += GetSecondTerm(lineIndex, pos, k, kString);
-                //foreach (var ngramTag in ngramTags.GetNGramTags(2))
-                //{
-                //    string[] split = ngramTag.Split(new[] { ':' });
-                //    sum += (forwardBackwordAlgos[i].GetQ(j, split[0], split[1]) *
-                //        weightedFeatureSum.GetFeatureK(split[0], split[1], j, k, sentence));
-                //}
-                //secondTerm += sum;
             }
-            return output - secondTerm;
+            return secondTerm;
         }
 
         private double GetSecondTerm(int lineIndex, int pos, int k, string kString)
         {
             double sum = 0;
-            //foreach (var ngramTag in ngramTags.GetNGramTags(2))
             for(var i = 0; i< _twoGramsList.Length; i++)
             {
                 if (_cache.Contains(_twoGramsList[i], kString, pos, lineIndex))
@@ -228,25 +207,41 @@ namespace LocationProjectWithFeatureTemplate
                     var value = forwardBackwordAlgos[lineIndex].GetQ(pos, _twoGramPair[i].Key,
                         _twoGramPair[i].Value);
                     sum += (value * _weightVector.Get(k));
+                    if (double.IsNaN(sum) || double.IsInfinity(sum) || double.IsNegativeInfinity(sum))
+                    {
+                        Console.WriteLine("sum is NAN k:" + k + " weight: " + _weightVector.Get(k) + " value is: " +
+                                          value);
+                    }
                 }
             }
             return sum;
-            //{
-            //    string[] split = ngramTag.Split(new[] { ':' });
+        }
 
-            //    if (_cache.Contains(split[0], split[1], k, pos, lineIndex))
-            //    {
-            //        sum += (forwardBackwordAlgos[lineIndex].GetQ(pos, split[0], split[1]) *
-            //        _weightVector.Get(k));    
-            //    }
-            //    //else
-            //    //{
-            //    //    sum += (forwardBackwordAlgos[lineIndex].GetQ(j, split[0], split[1]) *
-            //    //    weightedFeatureSum.GetFeatureK(split[0], split[1], j, k, sentence));
-            //    //}
+        public BigInteger GetAllFeatureKFromCacheInBig(List<string> tags, int k, int lineIndex)
+        {
+            BigInteger sum = 0;
+            for (var pos = 0; pos < tags.Count; pos++)
+            {
+                var prevTag = "*";
+                if (pos > 0)
+                {
+                    prevTag = tags[pos - 1];
+                }
+                if (_cache.Contains(prevTag, tags[pos], k, pos, lineIndex))
+                {
+                    var val = Math.Exp(_weightVector.Get(k));
+                    if (double.IsInfinity(val))
+                    {
+                        sum += (BigInteger)_weightVector.Get(k);
+                    }
+                    else
+                    {
+                        sum += (BigInteger) val;
+                    }
 
-            //}
-            //return sum;
+                }
+            }
+            return sum;
         }
 
         public double GetAllFeatureKFromCache(List<string> tags, int k, int lineIndex)
@@ -261,7 +256,19 @@ namespace LocationProjectWithFeatureTemplate
                 }
                 if (_cache.Contains(prevTag, tags[pos], k, pos, lineIndex))
                 {
-                    sum += Math.Exp(_weightVector.Get(k));
+                    var val = Math.Exp(_weightVector.Get(k));
+                    if (double.IsInfinity(val))
+                    {
+                        sum += _weightVector.Get(k);
+                    }
+                    else
+                    {
+                        sum += val;
+                    }
+                    if (double.IsNaN(sum) || double.IsInfinity(sum) || double.IsNegativeInfinity(sum))
+                    {
+                        Console.WriteLine("sum is NAN k:"+k +" weight: "+_weightVector.Get(k));
+                    }
                 }
             }
             return sum;
