@@ -85,13 +85,7 @@ namespace LocationProjectWithFeatureTemplate
 
         public double Get(int k)
         {
-            if (k < FeatureCount)
-                return WeightArray[k];
-            else
-            {
-                return 0;
-            }
-            
+            return k < FeatureCount ? WeightArray[k] : 0;
         }
 
         public void AddToKey(string key, double value)

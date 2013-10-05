@@ -47,6 +47,7 @@
     <Compile Include="EvalModel.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ExpWrapper.cs" />
     <Compile Include="FeatureCache.cs" />
     <Compile Include="Features.cs" />
     <Compile Include="FeatureWrapper.cs" />
