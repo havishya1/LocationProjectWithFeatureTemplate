@@ -85,7 +85,6 @@ namespace LocationProjectWithFeatureTemplate
                 algo.Run();
                 forwardBackwordAlgos.Add(algo);
                 counter++;
-                //Console.WriteLine("running for sentence: "+counter);
             }
         }
 
@@ -146,8 +145,8 @@ namespace LocationProjectWithFeatureTemplate
 
         private double Compute(int k)
         {
-            //BigInteger outputBigInteger = 0;
-            var outputDouble = new ExpWrapper();
+            BigInteger outputBigInteger = 0;
+            double outputDouble = 0;
             int lineIndex = 0;
             string kstring = "@#" + k.ToString(CultureInfo.InvariantCulture);
 
@@ -171,80 +170,79 @@ namespace LocationProjectWithFeatureTemplate
                 //}
                 //else
                 {
-                    double initOutputDouble = GetAllFeatureKFromCache(outputTags, k, lineIndex);
-                    var gradient = CalculateGradient(outputTags, k,
+                    double initOutputDouble = 0;
+                    initOutputDouble = GetAllFeatureKFromCache(outputTags, k, lineIndex);
+                    initOutputDouble -= CalculateGradient(outputTags, k,
                     lineIndex, kstring);
-                    gradient.AddPowerWithMultiplier(0, initOutputDouble);
 
-                    outputDouble.AddExp(gradient);
+                    outputDouble += initOutputDouble;
                 }
             }
 
-            var finalOutput = outputDouble.GetFinalOuputDouble() - (_lambda * _weightVector.Get(k));
+            var finalOutput = outputDouble + (double)outputBigInteger - (_lambda * _weightVector.Get(k));
             finalOutput = _weightVector.Get(k) + (_lambda * finalOutput);
             return finalOutput;
         }
 
-        private ExpWrapper CalculateGradient(List<string> outputTags,
+        private double CalculateGradient(List<string> outputTags,
             int k, int lineIndex, string kString)
         {
-            var secondTerm = new ExpWrapper();
+            double secondTerm = 0;
             
             // second term.
             for (var pos = 0; pos < outputTags.Count; pos++)
             {
-                secondTerm.AddExp(GetSecondTerm(lineIndex, pos, k, kString));
+                secondTerm += GetSecondTerm(lineIndex, pos, k, kString);
             }
             return secondTerm;
         }
 
-        private ExpWrapper GetSecondTerm(int lineIndex, int pos, int k, string kString)
+        private double GetSecondTerm(int lineIndex, int pos, int k, string kString)
         {
-            var sum =  new ExpWrapper();
+            double sum = 0;
             for(var i = 0; i< _twoGramsList.Length; i++)
             {
                 if (_cache.Contains(_twoGramsList[i], kString, pos, lineIndex))
                 {
                     var value = forwardBackwordAlgos[lineIndex].GetQ(pos, _twoGramPair[i].Key,
                         _twoGramPair[i].Value);
-                    value.XMultiplyFactor(_weightVector.Get(k));
-                    sum.AddExp(value);
-                    //if (double.IsNaN(sum) || double.IsInfinity(sum) || double.IsNegativeInfinity(sum))
-                    //{
-                    //    Console.WriteLine("sum is NAN k:" + k + " weight: " + _weightVector.Get(k) + " value is: " +
-                    //                      value);
-                    //}
+                    sum += (value * _weightVector.Get(k));
+                    if (double.IsNaN(sum) || double.IsInfinity(sum) || double.IsNegativeInfinity(sum))
+                    {
+                        Console.WriteLine("sum is NAN k:" + k + " weight: " + _weightVector.Get(k) + " value is: " +
+                                          value);
+                    }
                 }
             }
             return sum;
         }
 
-        //public BigInteger GetAllFeatureKFromCacheInBig(List<string> tags, int k, int lineIndex)
-        //{
-        //    BigInteger sum = 0;
-        //    for (var pos = 0; pos < tags.Count; pos++)
-        //    {
-        //        var prevTag = "*";
-        //        if (pos > 0)
-        //        {
-        //            prevTag = tags[pos - 1];
-        //        }
-        //        if (_cache.Contains(prevTag, tags[pos], k, pos, lineIndex))
-        //        {
-        //            var val = Math.Exp(_weightVector.Get(k));
-        //            if (double.IsInfinity(val))
-        //            {
-        //                sum += (BigInteger)_weightVector.Get(k);
-        //            }
-        //            else
-        //            {
-        //                sum += (BigInteger) val;
-        //            }
+        public BigInteger GetAllFeatureKFromCacheInBig(List<string> tags, int k, int lineIndex)
+        {
+            BigInteger sum = 0;
+            for (var pos = 0; pos < tags.Count; pos++)
+            {
+                var prevTag = "*";
+                if (pos > 0)
+                {
+                    prevTag = tags[pos - 1];
+                }
+                if (_cache.Contains(prevTag, tags[pos], k, pos, lineIndex))
+                {
+                    var val = Math.Exp(_weightVector.Get(k));
+                    if (double.IsInfinity(val))
+                    {
+                        sum += (BigInteger)_weightVector.Get(k);
+                    }
+                    else
+                    {
+                        sum += (BigInteger) val;
+                    }
 
-        //        }
-        //    }
-        //    return sum;
-        //}
+                }
+            }
+            return sum;
+        }
 
         public double GetAllFeatureKFromCache(List<string> tags, int k, int lineIndex)
         {
@@ -258,19 +256,19 @@ namespace LocationProjectWithFeatureTemplate
                 }
                 if (_cache.Contains(prevTag, tags[pos], k, pos, lineIndex))
                 {
-                    sum += _weightVector.Get(k);
-                    //if (double.IsInfinity(val))
-                    //{
-                    //    sum += _weightVector.Get(k);
-                    //}
-                    //else
-                    //{
-                    //    sum.AddExp(val);
-                    //}
-                    //if (double.IsNaN(sum) || double.IsInfinity(sum) || double.IsNegativeInfinity(sum))
-                    //{
-                    //    Console.WriteLine("sum is NAN k:"+k +" weight: "+_weightVector.Get(k));
-                    //}
+                    var val = Math.Exp(_weightVector.Get(k));
+                    if (double.IsInfinity(val))
+                    {
+                        sum += _weightVector.Get(k);
+                    }
+                    else
+                    {
+                        sum += val;
+                    }
+                    if (double.IsNaN(sum) || double.IsInfinity(sum) || double.IsNegativeInfinity(sum))
+                    {
+                        Console.WriteLine("sum is NAN k:"+k +" weight: "+_weightVector.Get(k));
+                    }
                 }
             }
             return sum;

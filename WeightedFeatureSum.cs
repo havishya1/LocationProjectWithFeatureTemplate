@@ -38,15 +38,15 @@ namespace LocationProjectWithFeatureTemplate
                 }
             }
             debugStr += "@@";
-            //if (_crf)
-            //{
-            //    var val = Math.Exp(sum);
-            //    if (double.IsInfinity(val))
-            //    {
-            //        return sum;
-            //    }
-            //    return val;
-            //}
+            if (_crf)
+            {
+                var val = Math.Exp(sum);
+                if (double.IsInfinity(val))
+                {
+                    return sum;
+                }
+                return val;
+            }
             return sum;
         }
 
@@ -60,20 +60,20 @@ namespace LocationProjectWithFeatureTemplate
             return GetFeatureValue(tags[0], tags[1], tags[2], k, debug, out debugStr);
         }
 
-        //public double GetAllFeatureK(List<string> tags, int k, List<string> line)
-        //{
-        //    double sum = 0;
-        //    for (var i = 0; i < tags.Count; i++)
-        //    {
-        //        var prevTag = "*";
-        //        if (i > 0)
-        //        {
-        //            prevTag = tags[i - 1];
-        //        }
-        //        sum += GetFeatureK(prevTag, tags[i], i, k, line);
-        //    }
-        //    return sum;
-        //}
+        public double GetAllFeatureK(List<string> tags, int k, List<string> line)
+        {
+            double sum = 0;
+            for (var i = 0; i < tags.Count; i++)
+            {
+                var prevTag = "*";
+                if (i > 0)
+                {
+                    prevTag = tags[i - 1];
+                }
+                sum += GetFeatureK(prevTag, tags[i], i, k, line);
+            }
+            return sum;
+        }
 
         public double GetFeatureK(string prevTag, string tag, int pos, int k, List<string> line)
         {
@@ -82,13 +82,12 @@ namespace LocationProjectWithFeatureTemplate
             {
                 if (WeightVector.GetFeatureToK(feature) == k)
                 {
-                    //double val = Math.Exp(WeightVector.Get(k));
-                    //if (double.IsInfinity(val))
-                    //{
-                    //    return WeightVector.Get(k);
-                    //}
-                    //return val;
-                    return WeightVector.Get(k);
+                    double val = Math.Exp(WeightVector.Get(k));
+                    if (double.IsInfinity(val))
+                    {
+                        return WeightVector.Get(k);
+                    }
+                    return val;
                 }
             }
             return 0;

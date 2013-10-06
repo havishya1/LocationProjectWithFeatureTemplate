@@ -39,7 +39,7 @@ namespace LocationProjectWithFeatureTemplate
             const string input = "../../data/training/NYT_19980403_parsed.key";
             const int threadCount = 1;
             var perceptron = new Perceptron(input, modelFile, tags);
-            perceptron.Train(1);
+            perceptron.Train();
             perceptron.ReMapFeatureToK();
             //perceptron.Dump();
             perceptron.MapFeatures.Dump();

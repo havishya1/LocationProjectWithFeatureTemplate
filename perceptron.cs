@@ -53,8 +53,9 @@ namespace LocationProjectWithFeatureTemplate
             inputData.Reset();    
         }
 
-        public void Train(int iterationCount)
+        public void Train()
         {
+            const int iterationCount = 10;
             for (var i = 0; i < iterationCount; i++)
             {
                 Console.WriteLine(DateTime.Now+" training iteration: "+ i);
