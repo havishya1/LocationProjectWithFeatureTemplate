@@ -95,9 +95,9 @@ namespace LocationProjectWithFeatureTemplate
             
         }
 
-        public void ReMapFeatureToK()
+        public void ReMapFeatureToK(bool normalize = true)
         {
-            MapFeatures.ReMappingFromWeightVector(_useAvg ? AvgWeightVector : WeightVector);
+            MapFeatures.ReMappingFromWeightVector(_useAvg ? AvgWeightVector : WeightVector, normalize);
             if (_useAvg)
             {
                 WeightVector = AvgWeightVector;

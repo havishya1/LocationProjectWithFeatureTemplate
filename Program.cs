@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -37,6 +38,7 @@ namespace LocationProjectWithFeatureTemplate
 
             const string modelFile = "../../data/training/tag.model.trial1";
             const string input = "../../data/training/NYT_19980403_parsed.key";
+            string LoggerFile = "../../Logs/Log_"+DateTime.Now.ToFileTime()+".txt";
             const int threadCount = 1;
             var perceptron = new Perceptron(input, modelFile, tags);
             perceptron.Train();
@@ -47,8 +49,10 @@ namespace LocationProjectWithFeatureTemplate
             var featureCache = new FeatureCache(perceptron.InputSentences, tags,
                 perceptron.MapFeatures.DictFeaturesToK);
             featureCache.CreateCache();
+            var logger = new WriteModel(LoggerFile);
             var gradient = new ComputeGradient(perceptron.InputSentences, perceptron.TagsList,
-                tags, .1, featureCache);
+                tags, .1, featureCache, logger);
+            //perceptron.WeightVector.ResetAllToZero();
             gradient.RunIterations(perceptron.WeightVector, 10, threadCount);
             gradient.Dump(modelFile, perceptron.MapFeatures.DictKToFeatures);
         }

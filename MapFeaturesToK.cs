@@ -27,7 +27,7 @@ namespace LocationProjectWithFeatureTemplate
             _tags = new Tags(tagList);
         }
 
-        public void ReMappingFromWeightVector(WeightVector weightVector)
+        public void ReMappingFromWeightVector(WeightVector weightVector, bool normalize = true)
         {
             var newDictKtoF = new Dictionary<int, string>();
             var newDictFtoK = new Dictionary<string, int>();
@@ -47,9 +47,14 @@ namespace LocationProjectWithFeatureTemplate
             var newWeights = new double[weightVector.FeatureCount];
             int featureCount = 0;
             Array.Clear(newWeights, 0, newWeights.Length);
+            double max = 0;
 
             for (int i = 0; i < weightVector.FeatureCount; i++)
             {
+                if (max < Math.Abs(weightVector.WeightArray[i]))
+                {
+                    max = Math.Abs(weightVector.WeightArray[i]);
+                }
                 if (Math.Abs(weightVector.WeightArray[i]) >= limit)
                 {
                     newWeights[featureCount] = weightVector.WeightArray[i];
@@ -57,6 +62,17 @@ namespace LocationProjectWithFeatureTemplate
                     newDictFtoK[feature] = featureCount;
                     newDictKtoF[featureCount] = feature;
                     featureCount++;
+                }
+            }
+
+            if (normalize)
+            {
+                for (int i = 0; i < featureCount; i++)
+                {
+                    if (Math.Abs(weightVector.WeightArray[i]) >= limit)
+                    {
+                        newWeights[featureCount] /= max;
+                    }
                 }
             }
             weightVector.WeightArray = newWeights;

@@ -156,5 +156,10 @@ namespace LocationProjectWithFeatureTemplate
                 WeightArray[i] += weightVector.WeightArray[i];
             }
         }
+
+        public void ResetAllToZero()
+        {
+            Array.Clear(WeightArray, 0, WeightArray.Length);
+        }
     }
 }

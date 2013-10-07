@@ -4,7 +4,7 @@ using System.IO;
 
 namespace LocationProjectWithFeatureTemplate
 {
-    class WriteModel
+    public class WriteModel
     {
         private readonly StreamWriter _writer;
 
@@ -23,10 +23,13 @@ namespace LocationProjectWithFeatureTemplate
             _writer.WriteLine(line);
         }
 
-        public void Flush()
+        public void Flush(bool close = true)
         {
             _writer.Flush();
-            _writer.Close();
+            if (close)
+            {
+                _writer.Close();
+            }
         }
 
         public void WriteDataWithTag(List<string> line, List<string> outputTags)

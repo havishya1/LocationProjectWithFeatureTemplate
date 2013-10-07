@@ -13,6 +13,7 @@ namespace LocationProjectWithFeatureTemplate
 {
     public class ComputeGradient
     {
+        public WriteModel Logger { get; set; }
         private readonly List<List<string>> _inputSentence;
         private readonly List<List<string>> _outputTagsList;
         private readonly List<string> _tagList;
@@ -24,8 +25,9 @@ namespace LocationProjectWithFeatureTemplate
         private KeyValuePair<string,string>[] _twoGramPair;
 
         public ComputeGradient(List<List<string>> inputSentence, List<List<string>> tagsList,
-            List<string> tagList, double lambda, FeatureCache cache)
+            List<string> tagList, double lambda, FeatureCache cache, WriteModel logger)
         {
+            Logger = logger;
             _inputSentence = inputSentence;
             _outputTagsList = tagsList;
             _tagList = tagList;
@@ -69,6 +71,7 @@ namespace LocationProjectWithFeatureTemplate
             //        dictKtoFeature[weight.Key], weight.Value));
             //}
             output.Flush();
+            Logger.Flush();
         }
 
         private void SetForwardBackwordAlgo(WeightVector weightVector)
@@ -81,6 +84,8 @@ namespace LocationProjectWithFeatureTemplate
             forwardBackwordAlgos.Clear();
             foreach (var sentence in _inputSentence)
             {
+                if (counter % 100 == 0)
+                    Console.WriteLine(DateTime.Now + "running fw/backword iteration: "+counter);
                 var algo = new ForwardBackwordAlgo(sentence, weightVector, _tagList);
                 algo.Run();
                 forwardBackwordAlgos.Add(algo);
@@ -95,6 +100,7 @@ namespace LocationProjectWithFeatureTemplate
             for (var iter = 0; iter < iterationCount; iter++)
             {
                 Console.WriteLine(DateTime.Now + " running iteration " + iter);
+                
                 var newWeightVector = _weightVector.DeepCopy();
                 SetForwardBackwordAlgo(newWeightVector);
                 if (threadCount > 1)
@@ -131,13 +137,14 @@ namespace LocationProjectWithFeatureTemplate
             {
                 if (k % 100 == 0)
                 {
-                    Console.WriteLine(DateTime.Now + "threadIndex: "+ threadIndex+
+                    Console.WriteLine(DateTime.Now + "threadIndex: " + threadIndex +
                         " running iteration for k " + k);
                 }
                 var wk = Compute(k);
                 if (double.IsNaN(wk) || double.IsInfinity(wk))
                 {
-                    Console.WriteLine("k: "+ k + "wk is infiity of nana"+ wk);
+                    Logger.WriteLine("k: "+ k + "wk is infiity of nana"+ wk);
+                    Logger.Flush(false);
                 }
                 newWeightVector.SetKey(k, wk);
             }
@@ -206,11 +213,13 @@ namespace LocationProjectWithFeatureTemplate
                 {
                     var value = forwardBackwordAlgos[lineIndex].GetQ(pos, _twoGramPair[i].Key,
                         _twoGramPair[i].Value);
-                    sum += (value * _weightVector.Get(k));
+                    //sum += (value * _weightVector.Get(k));
+                    sum += value;
                     if (double.IsNaN(sum) || double.IsInfinity(sum) || double.IsNegativeInfinity(sum))
                     {
-                        Console.WriteLine("sum is NAN k:" + k + " weight: " + _weightVector.Get(k) + " value is: " +
+                        Logger.WriteLine("sum is NAN k:" + k + " weight: " + _weightVector.Get(k) + " value is: " +
                                           value);
+                        Logger.Flush(false);
                     }
                 }
             }
@@ -256,6 +265,24 @@ namespace LocationProjectWithFeatureTemplate
                 }
                 if (_cache.Contains(prevTag, tags[pos], k, pos, lineIndex))
                 {
+                    sum ++;
+                }
+            }
+            return sum;
+        }
+
+        public double GetAllFeatureKFromCacheWithWeights(List<string> tags, int k, int lineIndex)
+        {
+            double sum = 0;
+            for (var pos = 0; pos < tags.Count; pos++)
+            {
+                var prevTag = "*";
+                if (pos > 0)
+                {
+                    prevTag = tags[pos - 1];
+                }
+                if (_cache.Contains(prevTag, tags[pos], k, pos, lineIndex))
+                {
                     var val = Math.Exp(_weightVector.Get(k));
                     if (double.IsInfinity(val))
                     {
@@ -267,7 +294,8 @@ namespace LocationProjectWithFeatureTemplate
                     }
                     if (double.IsNaN(sum) || double.IsInfinity(sum) || double.IsNegativeInfinity(sum))
                     {
-                        Console.WriteLine("sum is NAN k:"+k +" weight: "+_weightVector.Get(k));
+                        Logger.WriteLine("sum is NAN k:"+k +" weight: "+_weightVector.Get(k));
+                        Logger.Flush(false);
                     }
                 }
             }
